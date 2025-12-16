@@ -1,86 +1,121 @@
-# Real-time AI Backend (Tecnvirons Assignment)
+REAL-TIME AI BACKEND (TECNIVRONS ASSIGNMENT)
 
-A high-performance, asynchronous Python backend simulating a real-time conversational session. This project implements bi-directional WebSockets, real-time LLM streaming with **Google Gemini**, persistent storage with **Supabase**, and automated post-session summarization.
+This project is a Python backend that simulates a real-time chat session with an AI.
+It uses WebSockets for live communication, Google Gemini for AI responses, and Supabase to store session data. After a session ends, the backend automatically generates a short summary of the conversation.
 
-## 🚀 Features
+WHAT THIS PROJECT DOES
 
-* **Real-time Streaming:** Immediate token-by-token responses using WebSockets to simulate low-latency conversation.
-* **Complex LLM Interaction:** Implements **Function Calling** (Tool Use) to simulate internal data fetching during the conversation.
-* **Asynchronous Architecture:** Built with **FastAPI** to handle concurrent sessions without blocking.
-* **Data Persistence:** Stores session metadata and granular event logs in a **Supabase (PostgreSQL)** database.
-* **Post-Session Automation:** Automatically triggers a background task upon disconnection to analyze the logs and generate a session summary.
+Sends AI responses in real time using WebSockets
 
-## 🛠 Tech Stack
+Streams AI output token by token instead of waiting for the full response
 
-* **Language:** Python 3.12
-* **Framework:** FastAPI (Asynchronous Web Framework)
-* **Database:** Supabase (PostgreSQL)
-* **LLM:** Google Gemini (via `google-generativeai`)
-* **Server:** Uvicorn
+Uses a simple tool (inventory check) during the conversation
 
-## 📋 Prerequisites
+Stores chat sessions and message logs in a database
 
-Before running the project, ensure you have:
-1.  **Python 3.12** installed on your machine.
-2.  A **Supabase** project (you need the URL and Anon Key).
-3.  A **Google Cloud API Key** with access to Gemini models.
+Creates a summary automatically when the session ends
 
-## ⚙️ Installation & Setup
-```bash
-1. Clone the Repository
-git clone https://github.com/AbhinavChhajed/Realtime-AI-Backend-WebSockets-Supabase-
-cd Realtime-AI-Backend-WebSockets-Supabase-
+TECH USED
 
+Python 3.12
 
-2. Create Virtual Environment
-Bash
-# Windows (verify version first: py --list)
+FastAPI
+
+Supabase (PostgreSQL)
+
+Google Gemini API
+
+Uvicorn
+
+REQUIREMENTS
+
+You need:
+
+Python 3.12
+
+A Supabase project (URL and anon key)
+
+A Google API key with Gemini access
+
+SETUP
+
+Clone the repository
+
+git clone <your-repo-url>
+cd <your-repo-folder>
+
+Create and activate a virtual environment
+
+Windows:
 py -3.12 -m venv venv
 venv\Scripts\activate
 
-# Mac/Linux
+Mac/Linux:
 python3.12 -m venv venv
 source venv/bin/activate
 
-3. Install Dependencies
-Bash
+Install dependencies
+
 pip install -r requirements.txt
 
-4. Configure Environment
-Rename the .env.example file to .env:
-Bash
-mv .env.example .env
-Open .env and add your credentials.
+Set environment variables
+
+Rename .env.example to .env and add:
 
 SUPABASE_URL="your_supabase_project_url"
 SUPABASE_KEY="your_supabase_anon_key"
-GOOGLE_API_KEY="your_google_gemini_api_key"
+GOOGLE_API_KEY="your_google_api_key"
 
-🗄️ Database Schema (Supabase)
-You must execute the following SQL commands in your Supabase SQL Editor to set up the required tables.
-SQL
+DATABASE SETUP (SUPABASE)
+
+Run this SQL in Supabase:
+
+Enable UUID support:
+
+create extension if not exists "uuid-ossp";
+
+Sessions table:
 
 create table sessions (
-  session_id uuid primary key default uuid_generate_v4(),
-  user_id text not null,
-  start_time timestamp with time zone default now(),
-  end_time timestamp with time zone,
-  summary text,
-  duration_seconds integer
+session_id uuid primary key default uuid_generate_v4(),
+user_id text not null,
+start_time timestamp with time zone default now(),
+end_time timestamp with time zone,
+summary text,
+duration_seconds integer
 );
+
+Event logs table:
 
 create table event_logs (
-  id bigint generated always as identity primary key,
-  session_id uuid references sessions(session_id) on delete cascade,
-  event_type text check (event_type in ('user_message', 'ai_message', 'tool_call', 'system_event')),
-  content text,
-  metadata jsonb,
-  created_at timestamp with time zone default now()
+id bigint generated always as identity primary key,
+session_id uuid references sessions(session_id) on delete cascade,
+event_type text,
+content text,
+metadata jsonb,
+created_at timestamp with time zone default now()
 );
 
-🏃‍♂️ How to Run
-Start the WebSocket server using Uvicorn:
-Bash
+RUNNING THE PROJECT
+
+Start the server:
+
 uvicorn main:app --reload
-The server will start at http://127.0.0.1:8000.
-The WebSocket endpoint is available at ws://127.0.0.1:8000/ws/session/{session_id}.
+
+Server URL:
+http://127.0.0.1:8000
+
+WebSocket endpoint:
+ws://127.0.0.1:8000/ws/session/{session_id}
+
+TESTING
+
+Open the provided index.html in a browser
+
+Type a normal message like “Hello” to see live AI streaming
+
+Ask “Do we have any mice in stock?” to trigger the tool
+
+Refresh or close the tab to end the session
+
+After disconnecting, check the sessions table in Supabase to see the generated summary.
