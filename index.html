@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time AI Chat</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        #chat-box { 
+            border: 1px solid #ccc; 
+            height: 400px; 
+            overflow-y: scroll; 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            background-color: #f9f9f9;
+        }
+        .message { margin-bottom: 10px; padding: 8px; border-radius: 5px; }
+        .user { background-color: #e3f2fd; text-align: right; }
+        .ai { background-color: #fff; border: 1px solid #ddd; }
+        .status { color: #666; font-size: 0.9em; margin-bottom: 10px; }
+        #controls { display: flex; gap: 10px; }
+        #input-box { flex-grow: 1; padding: 8px; }
+        button { padding: 8px 16px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h2>Tecnvirons AI Backend Test</h2>
+    <div class="status" id="status">Connecting...</div>
+
+    <div id="chat-box"></div>
+
+    <div id="controls">
+        <input type="text" id="input-box" placeholder="Type a Question for AI to answer(Do we have any monitor in stock?)" onkeydown="if(event.key==='Enter') sendMessage()">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+<script>
+        const sessionId = crypto.randomUUID(); 
+        
+        const wsUrl = `ws://127.0.0.1:8000/ws/session/${sessionId}`;
+        
+        let ws;
+        const chatBox = document.getElementById("chat-box");
+        const statusDiv = document.getElementById("status");
+        let currentAiMessageDiv = null;
+
+        function connect() {
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                statusDiv.innerText = `Connected (Session ID: ${sessionId})`;
+                statusDiv.style.color = "green";
+            };
+
+            ws.onmessage = (event) => {
+                if (!currentAiMessageDiv) {
+                    currentAiMessageDiv = document.createElement("div");
+                    currentAiMessageDiv.className = "message ai";
+                    currentAiMessageDiv.innerHTML = "<strong>AI:</strong> ";
+                    chatBox.appendChild(currentAiMessageDiv);
+                }
+                currentAiMessageDiv.innerHTML += event.data;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            };
+
+            ws.onclose = () => {
+                statusDiv.innerText = "Disconnected. (Check Supabase for summary)";
+                statusDiv.style.color = "red";
+            };
+
+            ws.onerror = (error) => {
+                console.error("WebSocket Error:", error);
+                statusDiv.innerText = "Error connecting to WebSocket.";
+                statusDiv.style.color = "red";
+            };
+        }
+
+        function sendMessage() {
+            const input = document.getElementById("input-box");
+            const message = input.value.trim();
+            
+            if (message && ws.readyState === WebSocket.OPEN) {
+                const userDiv = document.createElement("div");
+                userDiv.className = "message user";
+                userDiv.innerText = message;
+                chatBox.appendChild(userDiv);
+                ws.send(message);
+                currentAiMessageDiv = null;
+                input.value = "";
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }
+        connect();
+    </script>
+</body>
+</html>
