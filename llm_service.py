@@ -38,44 +38,48 @@ model = genai.GenerativeModel(
     model_name='gemini-2.5-flash',
     tools=tools_list
 )
-
 async def stream_llm_response(user_message: str, session_id: str = None):
     chat = model.start_chat(enable_automatic_function_calling=False)
-
     response = await chat.send_message_async(user_message, stream=True)
 
+    full_response_parts = []
     async for chunk in response:
         for part in chunk.parts:
-            if part.function_call:
-                fn_name = part.function_call.name
-                fn_args = dict(part.function_call.args)
-                
-                print(f"AI requested tool: {fn_name} with args: {fn_args}")
-                
-                if fn_name in available_tools:
-                    tool_result = available_tools[fn_name](**fn_args)
-                    
-                    function_response = await chat.send_message_async(
-                        genai.protos.Content(
-                            parts=[genai.protos.Part(
-                                function_response=genai.protos.FunctionResponse(
-                                    name=fn_name,
-                                    response=tool_result
-                                )
-                            )]
-                        ),
-                        stream=True
-                    )
-                    
-                    async for tool_chunk in function_response:
-                        if tool_chunk.text:
-                            yield tool_chunk.text
-                else:
-                    yield f"Error: Tool {fn_name} not found."
-            
-            elif part.text:
+            full_response_parts.append(part)
+            if part.text:
                 yield part.text
 
+    function_calls = [p.function_call for p in full_response_parts if p.function_call]
+
+    if function_calls:
+        tool_responses = []
+        
+        for fc in function_calls:
+            fn_name = fc.name
+            fn_args = dict(fc.args)
+            
+            print(f"AI requested tool: {fn_name} with args: {fn_args}")
+            
+            if fn_name in available_tools:
+                tool_result = available_tools[fn_name](**fn_args)
+                
+                tr = genai.protos.Part(
+                    function_response=genai.protos.FunctionResponse(
+                        name=fn_name,
+                        response=tool_result
+                    )
+                )
+                tool_responses.append(tr)
+
+        if tool_responses:
+            final_response = await chat.send_message_async(
+                genai.protos.Content(parts=tool_responses),
+                stream=True
+            )
+            
+            async for tool_chunk in final_response:
+                if tool_chunk.text:
+                    yield tool_chunk.text
 async def generate_summary(session_logs: list):
     if not session_logs:
         return "No interaction recorded."
